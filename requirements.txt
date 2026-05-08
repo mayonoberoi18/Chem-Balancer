@@ -3,6 +3,5 @@ sympy
 pillow
 pytesseract
 speechrecognition
-pyaudio
 plotly
 numpy
