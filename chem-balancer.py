@@ -4,106 +4,142 @@ import re
 from PIL import Image
 import pytesseract
 import time
+import plotly.graph_objects as go
+import numpy as np
 
 # ---------------- PAGE CONFIG ----------------
 st.set_page_config(
-    page_title="Next Level Chemical Balancer",
+    page_title="⚗️ GOD MODE Chemical Balancer",
     page_icon="⚗️",
     layout="wide"
 )
 
-# ---------------- CUSTOM CSS ----------------
+# ---------------- CSS ----------------
 st.markdown("""
 <style>
 
-.stApp {
+.stApp{
     background: linear-gradient(135deg,#0f0c29,#302b63,#24243e);
-    color: white;
-}
-
-.main-title {
-    text-align:center;
-    font-size:55px;
-    font-weight:bold;
     color:white;
-    margin-bottom:10px;
 }
 
-.subtitle {
+.main-title{
     text-align:center;
-    color:#d1d1d1;
-    font-size:18px;
-    margin-bottom:30px;
+    font-size:60px;
+    font-weight:bold;
+    color:#ffffff;
 }
 
-.card {
-    background: rgba(255,255,255,0.08);
+.sub{
+    text-align:center;
+    font-size:20px;
+    color:#dddddd;
+    margin-bottom:20px;
+}
+
+.card{
+    background:rgba(255,255,255,0.08);
     padding:20px;
     border-radius:20px;
     margin-top:15px;
-    box-shadow: 0px 0px 15px rgba(0,0,0,0.3);
+    box-shadow:0px 0px 20px rgba(0,0,0,0.4);
 }
 
-.step {
-    background: rgba(0,0,0,0.35);
+.step{
+    background:rgba(0,0,0,0.35);
     padding:12px;
     border-radius:12px;
     margin-top:10px;
 }
 
-.result {
+.result{
     text-align:center;
-    font-size:30px;
+    font-size:34px;
     font-weight:bold;
     color:#00ffcc;
 }
 
-.stButton>button {
-    width:100%;
-    border-radius:12px;
-    height:50px;
-    font-size:18px;
-    font-weight:bold;
-    background: linear-gradient(90deg,#00c6ff,#0072ff);
-    color:white;
-    border:none;
+.small{
+    color:#cccccc;
 }
 
-.stButton>button:hover {
-    transform:scale(1.02);
-    transition:0.2s;
+.stButton > button{
+    width:100%;
+    height:55px;
+    border:none;
+    border-radius:15px;
+    background:linear-gradient(90deg,#00c6ff,#0072ff);
+    color:white;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.stTextInput input{
+    border-radius:12px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------- TITLE ----------------
-st.markdown('<div class="main-title">⚗️ Next Level Chemical Balancer</div>', unsafe_allow_html=True)
-
 st.markdown(
-    '<div class="subtitle">Balance chemical equations using ABCD or Hit & Trial methods</div>',
+    '<div class="main-title">⚗️ GOD MODE Chemical Equation Balancer</div>',
     unsafe_allow_html=True
 )
 
-# ---------------- PARSER ----------------
+st.markdown(
+    '<div class="sub">Ultra Pro NCERT Chemistry Solver • OCR • Smart Detection • Algebraic Engine</div>',
+    unsafe_allow_html=True
+)
+
+# ---------------- ADVANCED FORMULA PARSER ----------------
 def parse_formula(formula):
-    pattern = r'([A-Z][a-z]?)(\d*)'
-    matches = re.findall(pattern, formula)
 
-    composition = {}
+    tokens = re.findall(r'[A-Z][a-z]?|\(|\)|\d+', formula)
 
-    for element, count in matches:
-        count = int(count) if count else 1
+    stack = [{}]
 
-        if element in composition:
-            composition[element] += count
-        else:
-            composition[element] = count
+    i = 0
 
-    return composition
+    while i < len(tokens):
+
+        token = tokens[i]
+
+        if token == '(':
+            stack.append({})
+
+        elif token == ')':
+
+            top = stack.pop()
+
+            multiplier = 1
+
+            if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                multiplier = int(tokens[i + 1])
+                i += 1
+
+            for element, count in top.items():
+                stack[-1][element] = stack[-1].get(element, 0) + count * multiplier
+
+        elif re.match(r'[A-Z][a-z]?', token):
+
+            element = token
+
+            count = 1
+
+            if i + 1 < len(tokens) and tokens[i + 1].isdigit():
+                count = int(tokens[i + 1])
+                i += 1
+
+            stack[-1][element] = stack[-1].get(element, 0) + count
+
+        i += 1
+
+    return stack[0]
 
 # ---------------- GET ELEMENTS ----------------
 def get_elements(compounds):
+
     elements = set()
 
     for compound in compounds:
@@ -111,15 +147,22 @@ def get_elements(compounds):
 
     return sorted(elements)
 
-# ---------------- ALGEBRAIC METHOD ----------------
-def algebraic_balance(equation):
+# ---------------- BALANCER ----------------
+def algebraic_balance(eq):
 
-    left_side, right_side = equation.split("->")
+    eq = eq.replace('=', '->')
+    eq = eq.replace('→', '->')
+    eq = eq.replace(' ', '')
 
-    left_compounds = [x.strip() for x in left_side.split("+")]
-    right_compounds = [x.strip() for x in right_side.split("+")]
+    if '->' not in eq:
+        raise ValueError('Equation must contain ->')
 
-    compounds = left_compounds + right_compounds
+    left_side, right_side = eq.split('->')
+
+    left = left_side.split('+')
+    right = right_side.split('+')
+
+    compounds = left + right
 
     elements = get_elements(compounds)
 
@@ -129,10 +172,10 @@ def algebraic_balance(equation):
 
         row = []
 
-        for compound in left_compounds:
+        for compound in left:
             row.append(parse_formula(compound).get(element, 0))
 
-        for compound in right_compounds:
+        for compound in right:
             row.append(-parse_formula(compound).get(element, 0))
 
         matrix.append(row)
@@ -141,150 +184,203 @@ def algebraic_balance(equation):
 
     nullspace = matrix.nullspace()
 
+    if not nullspace:
+        raise ValueError("Cannot balance equation")
+
     solution = nullspace[0]
 
     lcm = sp.lcm([term.q for term in solution])
 
-    coefficients = [abs(int(term * lcm)) for term in solution]
+    coeffs = [abs(int(term * lcm)) for term in solution]
 
-    left_coefficients = coefficients[:len(left_compounds)]
-    right_coefficients = coefficients[len(left_compounds):]
+    gcd = abs(sp.gcd(coeffs))
 
-    balanced_left = " + ".join(
-        f"{coef if coef != 1 else ''}{compound}"
-        for coef, compound in zip(left_coefficients, left_compounds)
+    coeffs = [c // gcd for c in coeffs]
+
+    left_coeffs = coeffs[:len(left)]
+    right_coeffs = coeffs[len(left):]
+
+    balanced_left = ' + '.join(
+        f'{coef if coef != 1 else ""}{compound}'
+        for coef, compound in zip(left_coeffs, left)
     )
 
-    balanced_right = " + ".join(
-        f"{coef if coef != 1 else ''}{compound}"
-        for coef, compound in zip(right_coefficients, right_compounds)
+    balanced_right = ' + '.join(
+        f'{coef if coef != 1 else ""}{compound}'
+        for coef, compound in zip(right_coeffs, right)
     )
 
-    balanced_equation = balanced_left + " → " + balanced_right
+    balanced_equation = balanced_left + ' → ' + balanced_right
 
-    return balanced_equation, coefficients
+    return balanced_equation, coeffs, left, right
 
 # ---------------- REACTION TYPE ----------------
-def detect_reaction_type(eq):
+def detect_type(eq):
 
     if "O2" in eq:
-        return "Combustion Reaction"
+        return "🔥 Combustion Reaction"
 
-    elif "NO3" in eq or "KMnO4" in eq:
-        return "Redox Reaction"
+    if "NO3" in eq or "KMnO4" in eq:
+        return "⚡ Redox Reaction"
 
-    elif "+" in eq and "->" in eq:
-        return "General Chemical Reaction"
+    if "HCl" in eq or "H2SO4" in eq:
+        return "🧪 Acid Reaction"
 
-    else:
-        return "Unknown Reaction"
+    if "+" in eq and "->" in eq:
+        return "⚛️ General Chemical Reaction"
 
-# ---------------- STEP GENERATOR ----------------
+    return "❓ Unknown Reaction"
+
+# ---------------- NCERT EXPLANATION ----------------
 def generate_steps(eq, coeffs, method):
 
     steps = []
 
-    if method == "ABCD Method":
+    if method == "ABCD Algebraic Method":
 
         steps.append("Step 1: Write the unbalanced equation.")
 
-        steps.append("Step 2: Assign variables A, B, C... to all compounds.")
+        steps.append("Step 2: Assign variables A, B, C... to compounds.")
 
-        steps.append("Step 3: Count atoms of each element on both sides.")
+        steps.append("Step 3: Count atoms on both sides.")
 
-        steps.append("Step 4: Form algebraic equations.")
+        steps.append("Step 4: Form equations for each element.")
 
-        steps.append("Step 5: Solve the equations.")
+        steps.append("Step 5: Solve equations algebraically.")
 
         steps.append(f"Step 6: Final coefficient set = {coeffs}")
 
     else:
 
-        steps.append("Step 1: Start balancing one element at a time.")
+        steps.append("Step 1: Start balancing metals first.")
 
-        steps.append("Step 2: Balance metals first.")
+        steps.append("Step 2: Balance non-metals.")
 
-        steps.append("Step 3: Balance non-metals.")
+        steps.append("Step 3: Balance oxygen atoms.")
 
-        steps.append("Step 4: Balance oxygen and hydrogen at last.")
+        steps.append("Step 4: Balance hydrogen atoms.")
 
         steps.append(f"Step 5: Final coefficient set = {coeffs}")
 
     return steps
 
 # ---------------- OCR ----------------
-def extract_equation_from_image(uploaded_image):
+def extract_text(uploaded):
 
-    image = Image.open(uploaded_image)
+    image = Image.open(uploaded)
 
     text = pytesseract.image_to_string(image)
 
+    text = text.replace('=', '->')
+    text = text.replace('→', '->')
+
     return text.strip()
+
+# ---------------- VISUALIZATION ----------------
+def atom_chart(compounds, coeffs):
+
+    labels = []
+    values = []
+
+    for compound, coeff in zip(compounds, coeffs):
+
+        parsed = parse_formula(compound)
+
+        total_atoms = sum(parsed.values()) * coeff
+
+        labels.append(compound)
+        values.append(total_atoms)
+
+    fig = go.Figure(
+        data=[go.Bar(
+            x=labels,
+            y=values
+        )]
+    )
+
+    fig.update_layout(
+        title="Atom Distribution",
+        template="plotly_dark",
+        height=400
+    )
+
+    return fig
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.title("⚙️ Settings")
 
 method = st.sidebar.selectbox(
-    "Choose Balancing Method",
-    ["ABCD Method", "Hit & Trial Method"]
+    "Choose Method",
+    [
+        "ABCD Algebraic Method",
+        "Hit & Trial Method"
+    ]
 )
 
-# ---------------- INPUT MODE ----------------
+theme = st.sidebar.selectbox(
+    "Chemistry Mode",
+    [
+        "NCERT Student",
+        "Advanced Chemistry",
+        "Exam Preparation"
+    ]
+)
+
+# ---------------- INPUT ----------------
 input_mode = st.radio(
-    "Choose Input Mode",
-    ["Text Input", "Image OCR"]
+    "Choose Input Method",
+    [
+        "Text Input",
+        "Image OCR"
+    ]
 )
 
-equation = ""
+user_eq = ""
 
-# ---------------- TEXT INPUT ----------------
 if input_mode == "Text Input":
 
-    equation = st.text_input(
+    user_eq = st.text_input(
         "Enter Chemical Equation",
         "S + HNO3 -> H2SO4 + NO2 + H2O"
     )
 
-# ---------------- IMAGE OCR ----------------
 elif input_mode == "Image OCR":
 
-    uploaded_file = st.file_uploader(
+    uploaded = st.file_uploader(
         "Upload Equation Image",
         type=["png", "jpg", "jpeg"]
     )
 
-    if uploaded_file:
+    if uploaded:
 
-        extracted = extract_equation_from_image(uploaded_file)
+        extracted = extract_text(uploaded)
 
         st.success(f"Extracted Equation: {extracted}")
 
-        equation = extracted
+        user_eq = extracted
 
-# ---------------- SOLVE BUTTON ----------------
-if st.button("⚡ Balance Equation"):
+# ---------------- SOLVE ----------------
+if st.button("⚡ BALANCE EQUATION"):
 
-    if equation:
+    if user_eq:
 
         try:
 
-            balanced_equation, coeffs = algebraic_balance(equation)
+            balanced, coeffs, left, right = algebraic_balance(user_eq)
 
-            reaction_type = detect_reaction_type(equation)
+            reaction_type = detect_type(user_eq)
 
-            # RESULT
             st.markdown(
                 f'''
                 <div class="card">
                     <div class="result">
-                        ✅ {balanced_equation}
+                        ✅ {balanced}
                     </div>
                 </div>
                 ''',
                 unsafe_allow_html=True
             )
 
-            # REACTION TYPE
             st.markdown(
                 f'''
                 <div class="card">
@@ -294,11 +390,11 @@ if st.button("⚡ Balance Equation"):
                 unsafe_allow_html=True
             )
 
-            # PROGRESS ANIMATION
+            # Progress Animation
             st.markdown(
                 '''
                 <div class="card">
-                    ⚛️ Balancing Atoms...
+                    ⚛️ Balancing atoms...
                 </div>
                 ''',
                 unsafe_allow_html=True
@@ -310,17 +406,17 @@ if st.button("⚡ Balance Equation"):
                 time.sleep(0.01)
                 progress.progress(i + 1)
 
-            # STEPS
+            # Steps
             st.markdown(
                 '''
                 <div class="card">
-                    📘 Step-by-Step Solution
+                    📘 Step-by-Step NCERT Explanation
                 </div>
                 ''',
                 unsafe_allow_html=True
             )
 
-            steps = generate_steps(equation, coeffs, method)
+            steps = generate_steps(user_eq, coeffs, method)
 
             for step in steps:
 
@@ -333,20 +429,51 @@ if st.button("⚡ Balance Equation"):
                     unsafe_allow_html=True
                 )
 
+            # Visualization
+            st.markdown(
+                '''
+                <div class="card">
+                    📊 Atom Visualization
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+
+            compounds = left + right
+
+            fig = atom_chart(compounds, coeffs)
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Chemistry Tips
+            st.markdown(
+                '''
+                <div class="card">
+                    💡 Chemistry Tip:
+                    <br><br>
+                    Always balance metals first,
+                    then non-metals,
+                    oxygen,
+                    and hydrogen at last.
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+
         except Exception as e:
 
-            st.error(f"Error: {e}")
+            st.error(f"❌ Error: {e}")
 
     else:
 
-        st.warning("Please enter a chemical equation.")
+        st.warning("Please enter a valid chemical equation.")
 
 # ---------------- FOOTER ----------------
 st.markdown(
     """
     <br><br>
-    <center>
-        Made with ❤️ using Streamlit
+    <center class="small">
+        ⚗️ GOD MODE Chemistry Solver • Streamlit Edition
     </center>
     """,
     unsafe_allow_html=True
