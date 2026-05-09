@@ -139,15 +139,6 @@ ATOMIC_MASS = {
 VALID_ELEMENTS = set(ATOMIC_MASS.keys())
 
 # =========================================================
-# OCR CLEANER
-# =========================================================
-OCR_FIXES = {
-    'H20': 'H2O',
-    'KN03': 'KNO3',
-    'Pbl2': 'PbI2',
-    '0': 'O'
-}
-
 # =========================================================
 # PARSER
 # =========================================================
@@ -303,23 +294,6 @@ def balance_equation(eq):
     return balanced, coeffs, left, right
 
 # =========================================================
-# OCR
-# =========================================================
-def extract_text(uploaded):
-
-    image = Image.open(uploaded)
-
-    text = pytesseract.image_to_string(image)
-
-    for wrong, correct in OCR_FIXES.items():
-        text = text.replace(wrong, correct)
-
-    text = text.replace('=', '->')
-    text = text.replace('→', '->')
-
-    return text.strip()
-
-# =========================================================
 # REACTION TYPE
 # =========================================================
 def detect_reaction(eq):
@@ -417,34 +391,28 @@ mode = st.sidebar.selectbox(
 )
 
 # =========================================================
-# INPUT MODE
+# INPUT SECTION
 # =========================================================
-input_mode = st.radio(
-    'Choose Input Method',
-    ['Text Input', 'Image OCR']
+
+st.markdown(
+    '''
+    <div class="card">
+        <h3>✍️ Enter Chemical Equation</h3>
+        <p>
+        Examples:<br>
+        • Fe + O2 -> Fe2O3<br>
+        • Pb(NO3)2 + KI -> PbI2 + KNO3<br>
+        • KMnO4 + HCl -> KCl + MnCl2 + H2O + Cl2
+        </p>
+    </div>
+    ''',
+    unsafe_allow_html=True
 )
 
-user_eq = ''
-
-if input_mode == 'Text Input':
-
-    user_eq = st.text_input(
-        'Enter Equation',
-        'Pb(NO3)2 + KI -> PbI2 + KNO3'
-    )
-
-else:
-
-    uploaded = st.file_uploader(
-        'Upload Equation Image',
-        type=['png', 'jpg', 'jpeg']
-    )
-
-    if uploaded:
-
-        user_eq = extract_text(uploaded)
-
-        st.success(f'Extracted Equation: {user_eq}')
+user_eq = st.text_input(
+    'Chemical Equation',
+    'Pb(NO3)2 + KI -> PbI2 + KNO3'
+)
 
 # =========================================================
 # BALANCE BUTTON
@@ -509,20 +477,38 @@ if st.button('⚡ BALANCE EQUATION'):
                 )
 
             # Atom table
-            compounds = left + right
-
-            df = atom_dataframe(compounds)
-
             st.markdown(
                 '''
                 <div class="card">
-                    📊 Atom Count Table
+                    📊 Detailed Atom Analysis
                 </div>
                 ''',
                 unsafe_allow_html=True
             )
 
-            st.dataframe(df, use_container_width=True)
+            detailed_rows = []
+
+            for compound in compounds:
+
+                parsed = parse_formula(compound)
+
+                for element, count in parsed.items():
+
+                    detailed_rows.append({
+                        'Compound': compound,
+                        'Element': element,
+                        'Number of Atoms': count,
+                        'Atomic Mass': ATOMIC_MASS.get(element, 'Unknown')
+                    })
+
+            detailed_df = pd.DataFrame(detailed_rows)
+
+            st.dataframe(
+                detailed_df,
+                use_container_width=True
+            )
+
+            st.success('✅ The table above shows every element present in each compound along with atom counts and atomic masses.')
 
             # Graph
             fig = px.bar(
@@ -581,6 +567,37 @@ if st.button('⚡ BALANCE EQUATION'):
 
             st.plotly_chart(pie, use_container_width=True)
 
+            # Balanced Equation Summary
+            st.markdown(
+                '''
+                <div class="card">
+                    🧾 Final Summary
+                </div>
+                ''',
+                unsafe_allow_html=True
+            )
+
+            summary_data = {
+                'Property': [
+                    'Reaction Type',
+                    'Method Used',
+                    'Number of Reactants',
+                    'Number of Products',
+                    'Total Compounds'
+                ],
+                'Value': [
+                    reaction_type,
+                    method,
+                    len(left),
+                    len(right),
+                    len(compounds)
+                ]
+            }
+
+            summary_df = pd.DataFrame(summary_data)
+
+            st.table(summary_df)
+
             # Chemistry tips
             st.markdown(
                 '''
@@ -634,7 +651,8 @@ st.markdown(
     '''
     <br><br>
     <center>
-        ⚗️ Ultimate Streamlit Chemistry Solver
+        ⚗️ Ultimate Streamlit Chemistry Solver<br><br>
+        Made by Mayon Oberoi
     </center>
     ''',
     unsafe_allow_html=True
