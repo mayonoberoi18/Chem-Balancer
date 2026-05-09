@@ -12,7 +12,7 @@ import time
 # =========================================================
 
 st.set_page_config(
-    page_title="Ultimate Chemistry Balancer",
+    page_title="Chemistry Balancer",
     page_icon="⚗️",
     layout="wide"
 )
@@ -91,7 +91,7 @@ st.markdown("""
 # =========================================================
 
 st.markdown(
-    '<div class="main-title">⚗️ Ultimate Chemistry Balancer</div>',
+    '<div class="main-title">⚗️Chemistry Balancer</div>',
     unsafe_allow_html=True
 )
 
@@ -627,7 +627,7 @@ st.markdown("""
 
 <center>
 
-⚗️ Ultimate Streamlit Chemistry Solver
+⚗️Chemistry Solver
 
 <br><br>
 
