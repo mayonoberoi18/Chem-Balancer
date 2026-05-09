@@ -1,18 +1,16 @@
 import streamlit as st
 import sympy as sp
-import re
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from PIL import Image
-import pytesseract
-import time
+import re
 from collections import defaultdict
+import time
 
 # =========================================================
 # PAGE CONFIG
 # =========================================================
+
 st.set_page_config(
     page_title="Ultimate Chemistry Balancer",
     page_icon="⚗️",
@@ -20,10 +18,10 @@ st.set_page_config(
 )
 
 # =========================================================
-# CSS
+# CUSTOM CSS
 # =========================================================
-st.markdown(
-    """
+
+st.markdown("""
 <style>
 
 .stApp {
@@ -55,7 +53,7 @@ st.markdown(
 
 .result {
     text-align:center;
-    font-size:32px;
+    font-size:35px;
     font-weight:bold;
     color:#00ffcc;
 }
@@ -81,45 +79,39 @@ st.markdown(
     border:none;
     background:linear-gradient(90deg,#00c6ff,#0072ff);
     color:white;
-    font-size:18px;
+    font-size:20px;
     font-weight:bold;
 }
 
 </style>
-""",
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
 # =========================================================
-# TITLES
+# TITLE
 # =========================================================
+
 st.markdown(
     '<div class="main-title">⚗️ Ultimate Chemistry Balancer</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
-    '<div class="sub-title">NCERT + JEE Style Chemical Equation Solver</div>',
+    '<div class="sub-title">NCERT + JEE Chemical Equation Solver</div>',
     unsafe_allow_html=True
 )
 
 # =========================================================
-# PERIODIC TABLE DATA
+# PERIODIC TABLE
 # =========================================================
+
 ATOMIC_MASS = {
     'H': 1.008,
-    'He': 4.0026,
-    'Li': 6.94,
-    'Be': 9.0122,
-    'B': 10.81,
     'C': 12.011,
     'N': 14.007,
     'O': 15.999,
-    'F': 18.998,
     'Na': 22.99,
     'Mg': 24.305,
     'Al': 26.982,
-    'Si': 28.085,
     'P': 30.974,
     'S': 32.06,
     'Cl': 35.45,
@@ -139,9 +131,9 @@ ATOMIC_MASS = {
 VALID_ELEMENTS = set(ATOMIC_MASS.keys())
 
 # =========================================================
+# FORMULA PARSER
 # =========================================================
-# PARSER
-# =========================================================
+
 def parse_formula(formula):
 
     tokens = re.findall(r'[A-Z][a-z]?|\(|\)|\d+', formula)
@@ -154,13 +146,14 @@ def parse_formula(formula):
 
         token = tokens[i]
 
+        # OPEN BRACKET
         if token == '(':
-
             stack.append(defaultdict(int))
 
+        # CLOSE BRACKET
         elif token == ')':
 
-            top = stack.pop()
+            group = stack.pop()
 
             multiplier = 1
 
@@ -168,9 +161,10 @@ def parse_formula(formula):
                 multiplier = int(tokens[i + 1])
                 i += 1
 
-            for element, count in top.items():
+            for element, count in group.items():
                 stack[-1][element] += count * multiplier
 
+        # ELEMENT
         elif re.match(r'[A-Z][a-z]?', token):
 
             element = token
@@ -189,6 +183,7 @@ def parse_formula(formula):
 # =========================================================
 # VALIDATION
 # =========================================================
+
 def validate_formula(formula):
 
     elements = re.findall(r'[A-Z][a-z]?', formula)
@@ -199,17 +194,10 @@ def validate_formula(formula):
 
     return True
 
-
-def validate_equation(eq):
-
-    if '->' not in eq and '=' not in eq and '→' not in eq:
-        return False
-
-    return True
-
 # =========================================================
-# ELEMENTS
+# GET ELEMENTS
 # =========================================================
+
 def get_elements(compounds):
 
     elements = set()
@@ -223,25 +211,28 @@ def get_elements(compounds):
 # =========================================================
 # BALANCER
 # =========================================================
+
 def balance_equation(eq):
 
-    eq = eq.replace('=', '->')
-    eq = eq.replace('→', '->')
-    eq = eq.replace(' ', '')
+    eq = eq.replace("=", "->")
+    eq = eq.replace("→", "->")
+    eq = eq.replace(" ", "")
 
-    if not validate_equation(eq):
-        raise ValueError('Equation must contain ->')
+    if "->" not in eq:
+        raise ValueError("Equation must contain ->")
 
-    left_side, right_side = eq.split('->')
+    left_side, right_side = eq.split("->")
 
-    left = left_side.split('+')
-    right = right_side.split('+')
+    left = left_side.split("+")
+    right = right_side.split("+")
 
     compounds = left + right
 
+    # VALIDATE
     for compound in compounds:
+
         if not validate_formula(compound):
-            raise ValueError(f'Invalid compound: {compound}')
+            raise ValueError(f"Invalid compound: {compound}")
 
     elements = get_elements(compounds)
 
@@ -251,9 +242,11 @@ def balance_equation(eq):
 
         row = []
 
+        # LEFT SIDE
         for compound in left:
             row.append(parse_formula(compound).get(element, 0))
 
+        # RIGHT SIDE
         for compound in right:
             row.append(-parse_formula(compound).get(element, 0))
 
@@ -264,7 +257,7 @@ def balance_equation(eq):
     nullspace = matrix.nullspace()
 
     if not nullspace:
-        raise ValueError('Unable to balance equation')
+        raise ValueError("Unable to balance equation")
 
     solution = nullspace[0]
 
@@ -279,42 +272,45 @@ def balance_equation(eq):
     left_coeffs = coeffs[:len(left)]
     right_coeffs = coeffs[len(left):]
 
-    balanced_left = ' + '.join(
-        f'{coef if coef != 1 else ""}{compound}'
+    balanced_left = " + ".join(
+        f"{coef if coef != 1 else ''}{compound}"
         for coef, compound in zip(left_coeffs, left)
     )
 
-    balanced_right = ' + '.join(
-        f'{coef if coef != 1 else ""}{compound}'
+    balanced_right = " + ".join(
+        f"{coef if coef != 1 else ''}{compound}"
         for coef, compound in zip(right_coeffs, right)
     )
 
-    balanced = balanced_left + ' → ' + balanced_right
+    balanced_equation = balanced_left + " → " + balanced_right
 
-    return balanced, coeffs, left, right
+    return balanced_equation, coeffs, left, right
 
 # =========================================================
 # REACTION TYPE
 # =========================================================
+
 def detect_reaction(eq):
 
-    if 'O2' in eq:
-        return '🔥 Combustion Reaction'
+    if "O2" in eq:
+        return "🔥 Combustion Reaction"
 
-    if 'HCl' in eq or 'H2SO4' in eq:
-        return '🧪 Acid Reaction'
+    elif "HCl" in eq or "H2SO4" in eq:
+        return "🧪 Acid Reaction"
 
-    if 'KMnO4' in eq or 'K2Cr2O7' in eq:
-        return '⚡ Redox Reaction'
+    elif "NaOH" in eq:
+        return "⚗️ Neutralization Reaction"
 
-    if 'NaOH' in eq:
-        return '⚗️ Neutralization Reaction'
+    elif "KMnO4" in eq:
+        return "⚡ Redox Reaction"
 
-    return '⚛️ General Chemical Reaction'
+    else:
+        return "⚛️ General Chemical Reaction"
 
 # =========================================================
 # MOLAR MASS
 # =========================================================
+
 def calculate_molar_mass(compound):
 
     parsed = parse_formula(compound)
@@ -327,318 +323,295 @@ def calculate_molar_mass(compound):
     return round(total, 3)
 
 # =========================================================
-# STEP GENERATOR
+# STEP EXPLANATION
 # =========================================================
-def generate_steps(coeffs, method):
 
-    steps = []
+def generate_steps(coeffs):
 
-    if method == 'ABCD Method':
+    steps = [
 
-        steps.append('Step 1: Write the unbalanced equation.')
-        steps.append('Step 2: Assign variables A, B, C, D.')
-        steps.append('Step 3: Count atoms of each element.')
-        steps.append('Step 4: Form algebraic equations.')
-        steps.append('Step 5: Solve using matrices.')
-        steps.append(f'Step 6: Final coefficients = {coeffs}')
+        "Step 1: Write the unbalanced chemical equation.",
 
-    else:
+        "Step 2: Count atoms of each element on both sides.",
 
-        steps.append('Step 1: Balance metals first.')
-        steps.append('Step 2: Balance non-metals.')
-        steps.append('Step 3: Balance oxygen atoms.')
-        steps.append('Step 4: Balance hydrogen atoms.')
-        steps.append(f'Step 5: Final coefficients = {coeffs}')
+        "Step 3: Create algebraic equations for each element.",
+
+        "Step 4: Solve the equations using matrix method.",
+
+        f"Step 5: Final balanced coefficients = {coeffs}",
+
+        "Step 6: Verify that atoms are equal on both sides."
+    ]
 
     return steps
 
 # =========================================================
-# VISUALIZATION
-# =========================================================
-def atom_dataframe(compounds):
-
-    data = []
-
-    for compound in compounds:
-
-        parsed = parse_formula(compound)
-
-        for element, count in parsed.items():
-            data.append([
-                compound,
-                element,
-                count
-            ])
-
-    return pd.DataFrame(
-        data,
-        columns=['Compound', 'Element', 'Atoms']
-    )
-
-# =========================================================
 # SIDEBAR
 # =========================================================
-st.sidebar.title('⚙️ Settings')
 
-method = st.sidebar.selectbox(
-    'Choose Method',
-    ['ABCD Method', 'Hit & Trial Method']
-)
+st.sidebar.title("⚙️ Settings")
 
 mode = st.sidebar.selectbox(
-    'Chemistry Mode',
-    ['NCERT', 'JEE', 'Advanced']
+    "Select Mode",
+    ["NCERT", "JEE", "Advanced"]
 )
 
 # =========================================================
 # INPUT SECTION
 # =========================================================
 
-st.markdown(
-    '''
-    <div class="card">
-        <h3>✍️ Enter Chemical Equation</h3>
-        <p>
-        Examples:<br>
-        • Fe + O2 -> Fe2O3<br>
-        • Pb(NO3)2 + KI -> PbI2 + KNO3<br>
-        • KMnO4 + HCl -> KCl + MnCl2 + H2O + Cl2
-        </p>
-    </div>
-    ''',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="card">
+
+<h3>✍️ Enter Chemical Equation</h3>
+
+Examples:
+
+• Fe + O2 -> Fe2O3
+
+• Pb(NO3)2 + KI -> PbI2 + KNO3
+
+• KMnO4 + HCl -> KCl + MnCl2 + H2O + Cl2
+
+</div>
+""", unsafe_allow_html=True)
 
 user_eq = st.text_input(
-    'Chemical Equation',
-    'Pb(NO3)2 + KI -> PbI2 + KNO3'
+    "Chemical Equation",
+    "Pb(NO3)2 + KI -> PbI2 + KNO3"
 )
 
 # =========================================================
 # BALANCE BUTTON
 # =========================================================
-if st.button('⚡ BALANCE EQUATION'):
 
-    if user_eq:
+if st.button("⚡ BALANCE EQUATION"):
 
-        try:
+    try:
 
-            balanced, coeffs, left, right = balance_equation(user_eq)
+        # BALANCE
+        balanced, coeffs, left, right = balance_equation(user_eq)
 
-            reaction_type = detect_reaction(user_eq)
+        compounds = left + right
 
-            st.markdown(
-                f'''
-                <div class="card">
-                    <div class="result">
-                        ✅ {balanced}
-                    </div>
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
+        reaction_type = detect_reaction(user_eq)
 
-            st.markdown(
-                f'''
-                <div class="card">
-                    🧪 <b>Reaction Type:</b> {reaction_type}
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
+        # RESULT
+        st.markdown(f"""
+        <div class="card">
+            <div class="result">
+                ✅ {balanced}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-            # Progress
-            progress = st.progress(0)
+        # REACTION TYPE
+        st.markdown(f"""
+        <div class="card">
+            <h3>{reaction_type}</h3>
+        </div>
+        """, unsafe_allow_html=True)
 
-            for i in range(100):
-                time.sleep(0.005)
-                progress.progress(i + 1)
+        # PROGRESS BAR
+        progress = st.progress(0)
 
-            # Steps
-            st.markdown(
-                '''
-                <div class="card">
-                    📘 Step-by-Step Explanation
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
+        for i in range(100):
+            time.sleep(0.003)
+            progress.progress(i + 1)
 
-            steps = generate_steps(coeffs, method)
+        # =========================================================
+        # STEP EXPLANATION
+        # =========================================================
 
-            for step in steps:
-                st.markdown(
-                    f'''
-                    <div class="step">
-                        {step}
-                    </div>
-                    ''',
-                    unsafe_allow_html=True
+        st.markdown("""
+        <div class="card">
+            <h2>📘 Step-by-Step Explanation</h2>
+        </div>
+        """, unsafe_allow_html=True)
+
+        steps = generate_steps(coeffs)
+
+        for step in steps:
+            st.markdown(f"""
+            <div class="step">
+                {step}
+            </div>
+            """, unsafe_allow_html=True)
+
+        # =========================================================
+        # DETAILED ATOM ANALYSIS
+        # =========================================================
+
+        st.markdown("""
+        <div class="card">
+            <h2>📊 Detailed Atom Analysis</h2>
+        </div>
+        """, unsafe_allow_html=True)
+
+        detailed_rows = []
+
+        for compound in compounds:
+
+            parsed = parse_formula(compound)
+
+            for element, count in parsed.items():
+
+                detailed_rows.append({
+
+                    "Compound": compound,
+                    "Element": element,
+                    "Atoms Present": count,
+                    "Atomic Mass": ATOMIC_MASS.get(element, "Unknown")
+                })
+
+        detailed_df = pd.DataFrame(detailed_rows)
+
+        st.dataframe(
+            detailed_df,
+            use_container_width=True
+        )
+
+        st.success(
+            "✅ This table shows all elements, atom counts, and atomic masses."
+        )
+
+        # =========================================================
+        # BAR GRAPH
+        # =========================================================
+
+        fig = px.bar(
+            detailed_df,
+            x="Compound",
+            y="Atoms Present",
+            color="Element",
+            title="Element Distribution in Compounds"
+        )
+
+        fig.update_layout(template="plotly_dark")
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # =========================================================
+        # MOLAR MASS TABLE
+        # =========================================================
+
+        st.markdown("""
+        <div class="card">
+            <h2>⚖️ Molar Mass Analysis</h2>
+        </div>
+        """, unsafe_allow_html=True)
+
+        mass_data = []
+
+        for compound in compounds:
+
+            mass_data.append({
+                "Compound": compound,
+                "Molar Mass": calculate_molar_mass(compound)
+            })
+
+        mass_df = pd.DataFrame(mass_data)
+
+        st.dataframe(
+            mass_df,
+            use_container_width=True
+        )
+
+        # =========================================================
+        # PIE CHART
+        # =========================================================
+
+        pie = go.Figure(
+            data=[
+                go.Pie(
+                    labels=mass_df["Compound"],
+                    values=mass_df["Molar Mass"]
                 )
+            ]
+        )
 
-            # Atom table
-            st.markdown(
-                '''
-                <div class="card">
-                    📊 Detailed Atom Analysis
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
+        pie.update_layout(
+            title="Molar Mass Distribution",
+            template="plotly_dark"
+        )
 
-            detailed_rows = []
+        st.plotly_chart(pie, use_container_width=True)
 
-            for compound in compounds:
+        # =========================================================
+        # SUMMARY
+        # =========================================================
 
-                parsed = parse_formula(compound)
+        st.markdown("""
+        <div class="card">
+            <h2>🧾 Final Summary</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-                for element, count in parsed.items():
+        summary_df = pd.DataFrame({
 
-                    detailed_rows.append({
-                        'Compound': compound,
-                        'Element': element,
-                        'Number of Atoms': count,
-                        'Atomic Mass': ATOMIC_MASS.get(element, 'Unknown')
-                    })
+            "Property": [
+                "Reaction Type",
+                "Total Reactants",
+                "Total Products",
+                "Total Compounds",
+                "Mode"
+            ],
 
-            detailed_df = pd.DataFrame(detailed_rows)
+            "Value": [
+                reaction_type,
+                len(left),
+                len(right),
+                len(compounds),
+                mode
+            ]
+        })
 
-            st.dataframe(
-                detailed_df,
-                use_container_width=True
-            )
+        st.table(summary_df)
 
-            st.success('✅ The table above shows every element present in each compound along with atom counts and atomic masses.')
+        # =========================================================
+        # CHEMISTRY TIP
+        # =========================================================
 
-            # Graph
-            fig = px.bar(
-                df,
-                x='Compound',
-                y='Atoms',
-                color='Element',
-                title='Element Distribution'
-            )
+        st.markdown("""
+        <div class="tip">
 
-            fig.update_layout(
-                template='plotly_dark'
-            )
+        💡 <b>Chemistry Tip:</b><br><br>
 
-            st.plotly_chart(fig, use_container_width=True)
+        Balance metals first,
+        then non-metals,
+        then oxygen,
+        and hydrogen at the end.
 
-            # Molar masses
-            st.markdown(
-                '''
-                <div class="card">
-                    ⚖️ Molar Mass Calculator
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
+        </div>
+        """, unsafe_allow_html=True)
 
-            mass_data = []
+    except Exception as e:
 
-            for compound in compounds:
-                mass_data.append([
-                    compound,
-                    calculate_molar_mass(compound)
-                ])
-
-            mass_df = pd.DataFrame(
-                mass_data,
-                columns=['Compound', 'Molar Mass']
-            )
-
-            st.dataframe(mass_df, use_container_width=True)
-
-            # Pie chart
-            pie = go.Figure(
-                data=[
-                    go.Pie(
-                        labels=mass_df['Compound'],
-                        values=mass_df['Molar Mass']
-                    )
-                ]
-            )
-
-            pie.update_layout(
-                template='plotly_dark',
-                title='Molar Mass Distribution'
-            )
-
-            st.plotly_chart(pie, use_container_width=True)
-
-            # Balanced Equation Summary
-            st.markdown(
-                '''
-                <div class="card">
-                    🧾 Final Summary
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
-
-            summary_data = {
-                'Property': [
-                    'Reaction Type',
-                    'Method Used',
-                    'Number of Reactants',
-                    'Number of Products',
-                    'Total Compounds'
-                ],
-                'Value': [
-                    reaction_type,
-                    method,
-                    len(left),
-                    len(right),
-                    len(compounds)
-                ]
-            }
-
-            summary_df = pd.DataFrame(summary_data)
-
-            st.table(summary_df)
-
-            # Chemistry tips
-            st.markdown(
-                '''
-                <div class="tip">
-                    💡 Chemistry Tip:<br><br>
-                    Balance rare elements first,
-                    then metals,
-                    then oxygen,
-                    and hydrogen at the end.
-                </div>
-                ''',
-                unsafe_allow_html=True
-            )
-
-        except Exception as e:
-
-            st.error(f'❌ Error: {e}')
-
-    else:
-
-        st.warning('Please enter a valid equation.')
+        st.error(f"❌ Error: {e}")
 
 # =========================================================
-# PRACTICE SECTION
+# PRACTICE QUESTIONS
 # =========================================================
-st.markdown(
-    '''
-    <div class="card">
-        <h3>🧠 Practice Equations</h3>
-    </div>
-    ''',
-    unsafe_allow_html=True
-)
+
+st.markdown("""
+<div class="card">
+<h2>🧠 Practice Equations</h2>
+</div>
+""", unsafe_allow_html=True)
 
 practice_questions = [
-    'Fe + O2 -> Fe2O3',
-    'Al + HCl -> AlCl3 + H2',
-    'Ca(OH)2 + H3PO4 -> Ca3(PO4)2 + H2O',
-    'Pb(NO3)2 + KI -> PbI2 + KNO3',
-    'C2H6 + O2 -> CO2 + H2O',
-    'KMnO4 + HCl -> KCl + MnCl2 + H2O + Cl2'
+
+    "Fe + O2 -> Fe2O3",
+
+    "Al + HCl -> AlCl3 + H2",
+
+    "Ca(OH)2 + H3PO4 -> Ca3(PO4)2 + H2O",
+
+    "Pb(NO3)2 + KI -> PbI2 + KNO3",
+
+    "C2H6 + O2 -> CO2 + H2O",
+
+    "S + HNO3 -> H2SO4 + NO2 + H2O"
 ]
 
 for q in practice_questions:
@@ -647,13 +620,19 @@ for q in practice_questions:
 # =========================================================
 # FOOTER
 # =========================================================
-st.markdown(
-    '''
-    <br><br>
-    <center>
-        ⚗️ Ultimate Streamlit Chemistry Solver<br><br>
-        Made by Mayon Oberoi
-    </center>
-    ''',
-    unsafe_allow_html=True
-)
+
+st.markdown("""
+
+<br><br>
+
+<center>
+
+⚗️ Ultimate Streamlit Chemistry Solver
+
+<br><br>
+
+Made by Mayon Oberoi
+
+</center>
+
+""", unsafe_allow_html=True)
