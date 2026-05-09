@@ -286,26 +286,95 @@ def balance_equation(eq):
 
     return balanced_equation, coeffs, left, right
 
-# =========================================================
-# REACTION TYPE
-# =========================================================
-
 def detect_reaction(eq):
 
-    if "O2" in eq:
+    eq = eq.replace(" ", "")
+
+    left_side, right_side = eq.split("->")
+
+    reactants = left_side.split("+")
+    products = right_side.split("+")
+
+    # =====================================================
+    # DECOMPOSITION
+    # One reactant -> multiple products
+    # =====================================================
+
+    if len(reactants) == 1 and len(products) > 1:
+        return "🧨 Decomposition Reaction"
+
+    # =====================================================
+    # COMBUSTION
+    # Hydrocarbon + O2 -> CO2 + H2O
+    # =====================================================
+
+    hydrocarbon = False
+
+    for compound in reactants:
+
+        if "C" in compound and "H" in compound:
+            hydrocarbon = True
+
+    if (
+        hydrocarbon
+        and "O2" in reactants
+        and any("CO2" in p for p in products)
+        and any("H2O" in p for p in products)
+    ):
         return "🔥 Combustion Reaction"
 
-    elif "HCl" in eq or "H2SO4" in eq:
-        return "🧪 Acid Reaction"
+    # =====================================================
+    # SINGLE DISPLACEMENT
+    # =====================================================
 
-    elif "NaOH" in eq:
+    if len(reactants) == 2 and len(products) == 2:
+        return "⚔️ Displacement Reaction"
+
+    # =====================================================
+    # NEUTRALIZATION
+    # =====================================================
+
+    acids = ["HCl", "H2SO4", "HNO3"]
+
+    bases = ["NaOH", "KOH", "Ca(OH)2"]
+
+    if (
+        any(acid in reactants for acid in acids)
+        and any(base in reactants for base in bases)
+    ):
         return "⚗️ Neutralization Reaction"
 
-    elif "KMnO4" in eq:
+    # =====================================================
+    # REDOX
+    # =====================================================
+
+    redox_agents = [
+        "KMnO4",
+        "K2Cr2O7",
+        "HNO3"
+    ]
+
+    if any(agent in eq for agent in redox_agents):
         return "⚡ Redox Reaction"
 
-    else:
-        return "⚛️ General Chemical Reaction"
+    # =====================================================
+    # PRECIPITATION
+    # =====================================================
+
+    precipitates = [
+        "PbI2",
+        "AgCl",
+        "BaSO4"
+    ]
+
+    if any(ppt in products for ppt in precipitates):
+        return "🌧️ Precipitation Reaction"
+
+    # =====================================================
+    # DEFAULT
+    # =====================================================
+
+    return "⚛️ General Chemical Reaction"
 
 # =========================================================
 # MOLAR MASS
